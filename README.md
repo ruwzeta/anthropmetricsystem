@@ -1,77 +1,62 @@
-# Anthropometric System
-Body measurement extraction using Open Pose
+# BodyMeasure
 
-## WPF Application (WpfApp1)
+Tailoring measurements from two phone photos. Enter the customer's height, take a front photo and a side photo, and get a measurement card a tailor can use: neck, chest, waist, hip, thigh, shoulder width, sleeve length, arm length, sleeve inseam, back length, inseam and outseam, in cm or inches.
 
-The solution includes a WPF project named `WpfApp1`. Its specific purpose and interaction with the main `AnthropometricMeasure` web application are not clear from the existing codebase. It does not appear to be directly involved in the image processing or measurement calculation workflow.
+Everything runs in the browser. Photos are processed on the device and never uploaded.
 
-**Recommendation:** Review the `WpfApp1` project. If it is no longer needed or is an unfinished component, consider removing it to simplify the solution. If it serves a purpose (e.g., as a utility, for testing, or a separate tool), its functionality and any relationship with the web application should be documented.
+This is a rebuild of the 2019 BEng project *Body Measurement Extraction using OpenPose* (H.D.R.D. Chandraratne, Staffordshire University / APIIT). The original code is kept in [`legacy/`](legacy/).
 
-## Testing Recommendations
+## Using it
 
-To improve the robustness and maintainability of this project, adding automated tests is highly recommended. Consider the following areas for unit and integration testing:
+1. **Customer.** Enter a name and the height without shoes. Height sets the scale for everything else.
+2. **Front photo.** Face the camera, arms about 30° away from the body, feet shoulder-width apart, whole body in frame. Use the built-in camera with a 5-second timer, or choose a photo.
+3. **Side photo.** Turn 90°, arms down. You can skip this, but girths are then estimated from typical proportions.
+4. **Measurements.** Check and edit the values, then save the customer, print or save as PDF, or export CSV or JSON.
 
-### Unit Tests
+Each value has a quality badge. "Check" means the body was not seen clearly, the pose was off, or the value is unusual for a human body, so confirm it with a tape.
 
-*   **`DistanceAlgo.cs`**:
-    *   Test `distanceBetweenPoints()` with various inputs (zero distance, positive/negative coordinates, points on axes).
-*   **`MatrixCal.cs`**:
-    *   Thoroughly test all matrix operations: `MatrixCreate`, `MatrixProduct`, `MatrixInverse`, `MatrixIdentity`. Include tests for valid inputs, edge cases, and invalid inputs (e.g., incompatible dimensions, singular matrices for inversion).
-*   **`JsonRead.cs` (`LoadJson` method)**:
-    *   Test with valid sample JSON (confirming correct `MeasurementModel` population).
-    *   Test with malformed/invalid JSON.
-    *   Test with JSON files missing expected keypoints or data.
-    *   Test with non-existent JSON file paths.
-*   **`RatioAlgo.cs` (`matrixwcal` method)**:
-    *   Verify that `matrixwcal()` produces the expected `matrixw` output given its hardcoded input matrices. This acts as a regression test for the calibration logic.
+### Calibration
 
-### Integration Tests
+Tick **"I checked these values with a tape"** on a saved customer after correcting the values with a tape. The app then learns a per-measurement correction (`tape ≈ scale × photo + offset`) from all checked customers and applies it to new measurements. This is the 2019 translation formula `w = yxᵀ(xxᵀ + λI)⁻¹` (λ = 0.5), regularised towards "no correction" so that a few samples do not overfit.
 
-*   **`ImageUploadController.cs` (`PostFormData` method)**:
-    *   Test successful image upload and (simulated) OpenPose processing, verifying the correct HTTP response and that the dummy JSON output is created as expected.
-    *   Test with invalid file types (e.g., `.txt`, `.exe`).
-    *   Test with files exceeding the defined size limits.
-    *   Test behavior when no file is uploaded.
-*   **`MeasurementController.cs` (`GetMeasurement` method)**:
-    *   Test with a valid `jsonPath` query parameter, ensuring correct `MeasurementModel` retrieval.
-    *   Test with a missing or empty `jsonPath`.
-    *   Test with `jsonPath` values that are invalid (e.g., outside the allowed directory, non-existent file).
+## How it measures
 
-Consider using a testing framework like MSTest, NUnit, or xUnit for implementing these tests.
+| Step | 2019 version | Now |
+|---|---|---|
+| Capture | Android app (Camera2) | Any phone or computer browser, with a self-timer camera |
+| Body points | OpenPose C++ DLL on a Windows .NET 4.x server | MediaPipe Pose Landmarker (33 points and a person mask) in the browser |
+| Scale | Camera fixed at 250 cm | The person's height, measured from head top to floor in each photo |
+| Measurements | 7 limb segment lengths | 12 tailoring measurements, including girths |
+| Girths | none | Ellipse model: width from the front silhouette, depth from the side silhouette at the same height |
+| Output | Text views | Editable card, print/PDF, CSV, JSON, saved customers |
 
-## Configuration
+The measurement code is in [`src/lib/measure.ts`](src/lib/measure.ts) and is tested against a synthetic body with known dimensions ([`src/lib/testing/syntheticBody.ts`](src/lib/testing/syntheticBody.ts)).
 
-The application uses settings in the `Web.config` file's `<appSettings>` section for key configurations:
+### Accuracy
 
-### Image Processing and Upload (`ImageUploadController`)
+Photo-based measurement is an estimate. Expect a few centimetres of error on girths. Loose clothing, a tilted camera, or a pose that differs from the guide all make it worse. The accuracy on real people has not been measured yet; calibration with tape-checked customers is the way to tighten it for a given tailor and phone.
 
-*   **`OpenPoseExePath`**:
-    *   **Purpose**: Specifies the full path to the OpenPose executable (e.g., `OpenPoseDemo.exe` or similar). This is used to process the uploaded images.
-    *   **Example**: `<add key="OpenPoseExePath" value="C:\Program Files\OpenPose\bin\OpenPoseDemo.exe" />`
-    *   **Note**: The application will return a server error if this path is not configured or is invalid. The actual OpenPose execution is currently simulated in the code.
+## Development
 
-*   **`AllowedUploadExtensions`**:
-    *   **Purpose**: A comma-separated list of allowed file extensions for image uploads.
-    *   **Example**: `<add key="AllowedUploadExtensions" value=".jpg,.jpeg,.png,.bmp,.gif" />`
-    *   **Default (if not set or invalid)**: `.jpg,.jpeg,.png`
+Requires Node 22.12+ (npm 11 recommended).
 
-*   **`MaxUploadFileSizeInBytes`**:
-    *   **Purpose**: The maximum allowed file size for uploads, specified in bytes.
-    *   **Example**: `<add key="MaxUploadFileSizeInBytes" value="10485760" />` (for 10 MB)
-    *   **Default (if not set or invalid)**: `10485760` (10 MB)
+```sh
+npm install
+npm run dev      # http://localhost:5173 (use `--host` to open it on a phone on the same Wi-Fi)
+npm test         # unit tests
+npm run build    # static site in dist/
+```
 
-### Measurement Calibration (`RatioAlgo`)
+The camera needs HTTPS or localhost. The pose model (~30 MB) downloads from Google's model storage the first time it is used and is then cached by the browser.
 
-These settings are critical for the `RatioAlgo` to calculate final measurements. The application will throw a configuration error on startup if these are missing or malformed.
+### Deploying
 
-*   **`RatioAlgo.Lambda`**:
-    *   **Purpose**: The regularization parameter (lambda) used in the matrix calculations.
-    *   **Example**: `<add key="RatioAlgo.Lambda" value="0.50" />`
+`.github/workflows/pages.yml` publishes `dist/` to GitHub Pages on every push to `master`. Turn it on under **Settings → Pages → Source: GitHub Actions**. Any static host (Vercel, Netlify, Cloudflare Pages) also works.
 
-*   **`RatioAlgo.MatrixX`**:
-    *   **Purpose**: A comma-separated string of 7 double values representing the 'matrixx' calibration vector.
-    *   **Example**: `<add key="RatioAlgo.MatrixX" value="72.597,61.504,56.222,115.277,45.382,89.17,72.683" />`
+## Repository layout
 
-*   **`RatioAlgo.MatrixY`**:
-    *   **Purpose**: A comma-separated string of 7 double values representing the 'matrixy' calibration vector.
-    *   **Example**: `<add key="RatioAlgo.MatrixY" value="44,33,27,63,23,51,45" />`
+```
+src/lib/        measurement engine, calibration, photo checks, export (no UI)
+src/components/ React screens
+legacy/         the 2019 ASP.NET Web API, OpenPose DLLs and WPF project
+```
