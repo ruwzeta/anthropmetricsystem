@@ -8,6 +8,7 @@ import { PhotoStep } from './components/PhotoStep';
 import type { Unit } from './lib/format';
 import { computeMeasurements, MeasureError, type MeasurementResult } from './lib/measure';
 import type { AnalysedPhoto } from './lib/pose';
+import { checkPhoto, downgradeForPhotoIssues } from './lib/validate';
 import { calibrationFromProfiles, initialFinalValues, loadProfiles, loadSettings, newId, saveProfiles, saveSettings, type Profile, type Settings } from './lib/profiles';
 
 type Tab = 'measure' | 'customers' | 'calibration' | 'about';
@@ -46,7 +47,9 @@ export function App() {
     if (!front || !details.heightCm) return;
     setError(null);
     try {
-      const r = computeMeasurements({ front: front.frame, side: side?.frame, heightCm: details.heightCm });
+      const measured = computeMeasurements({ front: front.frame, side: side?.frame, heightCm: details.heightCm });
+      const photoIssues = [...checkPhoto(front.frame, 'front'), ...(side ? checkPhoto(side.frame, 'side') : [])];
+      const r = { ...measured, values: downgradeForPhotoIssues(measured.values, photoIssues), warnings: [...photoIssues, ...measured.warnings] };
       setResult(r);
       setDraft({
         id: newId(),
