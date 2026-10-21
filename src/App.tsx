@@ -5,13 +5,19 @@ import { CustomerList } from './components/CustomerList';
 import { DetailsStep } from './components/DetailsStep';
 import { MeasurementCard } from './components/MeasurementCard';
 import { PhotoStep } from './components/PhotoStep';
+import { TestingView } from './components/TestingView';
+import { TestSubmit } from './components/TestSubmit';
+import { useStudy } from './components/useStudy';
 import type { Unit } from './lib/format';
 import { computeMeasurements, MeasureError, type MeasurementResult } from './lib/measure';
 import type { AnalysedPhoto } from './lib/pose';
 import { checkPhoto, downgradeForPhotoIssues } from './lib/validate';
 import { calibrationFromProfiles, initialFinalValues, loadProfiles, loadSettings, newId, saveProfiles, saveSettings, type Profile, type Settings } from './lib/profiles';
 
-type Tab = 'measure' | 'customers' | 'calibration' | 'about';
+type Tab = 'measure' | 'customers' | 'calibration' | 'testing' | 'about';
+
+// A sign-in link from the tester email lands on ?tab=testing.
+const initialTab = (): Tab => (new URLSearchParams(window.location.search).get('tab') === 'testing' ? 'testing' : 'measure');
 type Step = 'details' | 'front' | 'side' | 'results';
 
 const STEPS: { id: Step; label: string }[] = [
@@ -22,7 +28,8 @@ const STEPS: { id: Step; label: string }[] = [
 ];
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('measure');
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const study = useStudy();
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [profiles, setProfiles] = useState<Profile[]>(loadProfiles);
 
@@ -98,6 +105,7 @@ export function App() {
               ['measure', 'Measure'],
               ['customers', `Customers${profiles.length ? ` (${profiles.length})` : ''}`],
               ['calibration', 'Calibration'],
+              ['testing', study.tester ? 'Testing ✓' : 'Testing'],
               ['about', 'How it works'],
             ] as [Tab, string][]
           ).map(([id, label]) => (
@@ -159,6 +167,7 @@ export function App() {
                   photos={{ front, side, guides: result.guides }}
                   calibrated={calibrated}
                 />
+                {study.tester && <TestSubmit key={draft.id} study={study} profile={draft} sidePhoto={!!side} unit={settings.unit} onNewTest={startOver} />}
                 <div className="row nav no-print">
                   <button type="button" className="secondary" onClick={() => setStep('side')}>
                     Back
@@ -195,6 +204,8 @@ export function App() {
             verifiedCount={profiles.filter((p) => p.tapeVerified).length}
           />
         )}
+
+        {tab === 'testing' && <TestingView study={study} unit={settings.unit} onStartTest={startOver} />}
 
         {tab === 'about' && <About />}
       </main>

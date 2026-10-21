@@ -240,8 +240,10 @@ legend {
   margin-bottom: 6px;
 }
 input[type='text'],
+input[type='email'],
 input:not([type]),
 input[type='number'],
+select,
 textarea {
   border: 1px solid var(--border);
   background: var(--bg);
@@ -280,6 +282,7 @@ label.check {
   margin: 16px 0 8px;
 }
 label.check input {
+  flex: none;
   margin-top: 4px;
   width: 18px;
   height: 18px;
@@ -567,6 +570,52 @@ input.value[readonly] {
 }
 .prose li {
   margin-bottom: 8px;
+}
+
+/* Testing */
+.form label.check {
+  margin: 0;
+}
+.card h3 {
+  margin: 20px 0 8px;
+  font-size: 1.05rem;
+}
+.row.two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.consent ul {
+  padding-left: 20px;
+}
+.tape-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.tape-grid label {
+  font-size: 0.9rem;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+input.invalid {
+  border-color: var(--err);
+}
+.feedback {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.feedback li {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+}
+.feedback p {
+  margin: 0 0 4px;
+  white-space: pre-wrap;
 }
 
 .print-only {
