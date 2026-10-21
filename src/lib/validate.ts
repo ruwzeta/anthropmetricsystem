@@ -1,5 +1,6 @@
 import { distance, midpoint } from './geometry';
-import { LM, type PoseFrame } from './measure';
+import type { MeasurementKey } from './definitions';
+import { LM, type MeasuredValue, type MeasurementResult, type PoseFrame } from './measure';
 
 export type View = 'front' | 'side';
 
@@ -38,4 +39,17 @@ export function checkPhoto(frame: PoseFrame, view: View): string[] {
     if (view === 'side' && ratio > 0.35) issues.push('The person is not fully side-on. Turn 90° so one shoulder points at the camera.');
   }
   return issues;
+}
+
+/**
+ * When a photo failed its checks, no value from it can be trusted as "Good":
+ * every measurement except the entered height is marked for a tape check.
+ */
+export function downgradeForPhotoIssues(values: MeasurementResult['values'], issues: string[]): MeasurementResult['values'] {
+  if (issues.length === 0) return values;
+  const out: MeasurementResult['values'] = {};
+  for (const [key, v] of Object.entries(values) as [MeasurementKey, MeasuredValue][]) {
+    out[key] = key === 'height' ? v : { ...v, confidence: 'low', note: v.note ?? 'The photo did not pass its checks. Measure with a tape.' };
+  }
+  return out;
 }
