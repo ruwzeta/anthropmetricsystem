@@ -19,6 +19,12 @@ Each value has a quality badge. "Check" means the body was not seen clearly, the
 
 Tick **"I checked these values with a tape"** on a saved customer after correcting the values with a tape. The app then learns a per-measurement correction (`tape ≈ scale × photo + offset`) from all checked customers and applies it to new measurements. This is the 2019 translation formula `w = yxᵀ(xxᵀ + λI)⁻¹` (λ = 0.5), regularised towards "no correction" so that a few samples do not overfit.
 
+### Testing with volunteers
+
+The **Testing** tab is for an accuracy study: testers sign in with their email, agree to the study terms, measure themselves with the app, enter their own tape measurements and rate the app. Admins see the error for each measurement against tape and can export the results as CSV. Photos are still never uploaded.
+
+Results are shared through a free [Supabase](https://supabase.com) project. Until one is connected, the tab works on the device only. Setup takes about ten minutes: see [docs/TESTING.md](docs/TESTING.md).
+
 ## How it measures
 
 | Step | 2019 version | Now |
@@ -58,5 +64,7 @@ The camera needs HTTPS or localhost. The pose model (~30 MB) downloads from Goog
 ```
 src/lib/        measurement engine, calibration, photo checks, export (no UI)
 src/components/ React screens
+supabase/       database schema for tester accounts and study results
+docs/           setup guides
 legacy/         the 2019 ASP.NET Web API, OpenPose DLLs and WPF project
 ```
