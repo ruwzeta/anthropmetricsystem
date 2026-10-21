@@ -50,12 +50,13 @@ export function App() {
   const setUnit = (unit: Unit) => setSettings((s) => ({ ...s, unit }));
   const saved = !!draft && profiles.some((p) => p.id === draft.id);
 
-  const measure = () => {
+  // Takes the side photo as an argument: when skipping, `side` state is still the old photo in this closure.
+  const measure = (sidePhoto: AnalysedPhoto | null = side) => {
     if (!front || !details.heightCm) return;
     setError(null);
     try {
-      const measured = computeMeasurements({ front: front.frame, side: side?.frame, heightCm: details.heightCm });
-      const photoIssues = [...checkPhoto(front.frame, 'front'), ...(side ? checkPhoto(side.frame, 'side') : [])];
+      const measured = computeMeasurements({ front: front.frame, side: sidePhoto?.frame, heightCm: details.heightCm });
+      const photoIssues = [...checkPhoto(front.frame, 'front'), ...(sidePhoto ? checkPhoto(sidePhoto.frame, 'side') : [])];
       const r = { ...measured, values: downgradeForPhotoIssues(measured.values, photoIssues), warnings: [...photoIssues, ...measured.warnings] };
       setResult(r);
       setDraft({
@@ -145,10 +146,10 @@ export function App() {
                 photo={side}
                 onChange={setSide}
                 onBack={() => setStep('front')}
-                onNext={measure}
+                onNext={() => measure()}
                 onSkip={() => {
                   setSide(null);
-                  measure();
+                  measure(null);
                 }}
               />
             )}

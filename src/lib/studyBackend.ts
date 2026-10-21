@@ -57,8 +57,11 @@ const LOCAL_KEY = 'bodymeasure.study.v1';
 export class LocalBackend implements StudyBackend {
   mode = 'local' as const;
   private listeners = new Set<(user: StudyUser | null) => void>();
+  /** The last state written, so the session keeps working when storage is unavailable. */
+  private memory: LocalState | null = null;
 
   private read(): LocalState {
+    if (this.memory) return this.memory;
     try {
       const raw = localStorage.getItem(LOCAL_KEY);
       if (raw) return JSON.parse(raw) as LocalState;
@@ -69,10 +72,11 @@ export class LocalBackend implements StudyBackend {
   }
 
   private write(state: LocalState): void {
+    this.memory = state;
     try {
       localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
     } catch {
-      // Storage can be unavailable (private mode); nothing is kept after the page closes.
+      // Storage can be unavailable (private mode); the state then lasts until the page closes.
     }
   }
 

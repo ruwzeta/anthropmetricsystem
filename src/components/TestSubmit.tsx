@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { version as appVersion } from '../../package.json';
 import type { MeasurementKey } from '../lib/definitions';
-import type { Unit } from '../lib/format';
+import { toUnit, type Unit } from '../lib/format';
 import { inchesToCm } from '../lib/geometry';
 import { newId, type Profile } from '../lib/profiles';
 import { buildSubmission, describeDevice, isPlausibleTape, TAPE_MEASUREMENTS } from '../lib/study';
@@ -36,7 +36,8 @@ function Rating({ label, low, high, value, onChange }: { label: string; low: str
 /** Shown under the results while a tester is signed in: tape values, ratings and comments for the study. */
 export function TestSubmit({ study, profile, sidePhoto, unit, onNewTest }: Props) {
   const { backend, tester } = study;
-  const [tape, setTape] = useState<Partial<Record<MeasurementKey, string>>>({});
+  // Each entry keeps the unit it was typed in, so switching units on the card cannot reinterpret it.
+  const [tape, setTape] = useState<Partial<Record<MeasurementKey, { text: string; unit: Unit }>>>({});
   const [ease, setEase] = useState<number | null>(null);
   const [trust, setTrust] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('');
@@ -44,10 +45,15 @@ export function TestSubmit({ study, profile, sidePhoto, unit, onNewTest }: Props
   const [error, setError] = useState<string | null>(null);
   if (!tester) return null;
 
-  const toCm = (text: string | undefined) => {
-    if (!text?.trim()) return undefined;
-    const n = Number(text);
-    return unit === 'cm' ? n : inchesToCm(n);
+  const toCm = (entry: { text: string; unit: Unit } | undefined) => {
+    if (!entry?.text.trim()) return undefined;
+    const n = Number(entry.text);
+    return entry.unit === 'cm' ? n : inchesToCm(n);
+  };
+  const shown = (entry: { text: string; unit: Unit } | undefined) => {
+    if (!entry) return '';
+    const cm = toCm(entry);
+    return entry.unit === unit || cm === undefined || !Number.isFinite(cm) ? entry.text : String(toUnit(cm, unit));
   };
   const invalid = TAPE_MEASUREMENTS.filter((m) => {
     const v = toCm(tape[m.key]);
@@ -111,10 +117,10 @@ export function TestSubmit({ study, profile, sidePhoto, unit, onNewTest }: Props
                 type="number"
                 inputMode="decimal"
                 step="0.1"
-                value={tape[m.key] ?? ''}
+                value={shown(tape[m.key])}
                 aria-invalid={bad}
                 className={bad ? 'invalid' : undefined}
-                onChange={(e) => setTape((t) => ({ ...t, [m.key]: e.target.value }))}
+                onChange={(e) => setTape((t) => ({ ...t, [m.key]: { text: e.target.value, unit } }))}
               />
             </label>
           );
